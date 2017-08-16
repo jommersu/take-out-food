@@ -1,4 +1,4 @@
-const bestCharge = require('../src/best-charge.js');
+const bestCharge = require('../src/best-charge2.js');
 
 describe('Take out food', function () {
 
