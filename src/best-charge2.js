@@ -1,24 +1,73 @@
 const loadAllItems = require('../src/items.js');
 const loadPromotions = require('../src/promotions.js');
-module.exports = function bestCharge(inputs) {
+module.exports = function bestCharge2(inputs) {
   var allItems = loadAllItems();
   var allProItems = loadPromotions();
   let foodCount = foodCounts(inputs);
-  console.log(foodCount);
-  let proItems = countPromotions(foodCount , allProItems);
-  console.log(proItems);
-  /*let comparedItems = comparePromotions(foodItems , proItems);
-  //console.log(comparedItems);
-  let printString = printList(foodItems , proItems , comparedItems);
-  console.log(printString);
-  return printString;*/
+  let foodItems = getFood(foodCount, allItems);
+  let proItems = countPromotions(foodItems , allProItems);
+  let comparedItems = comparePromotions(foodItems, proItems, allProItems);
+  let printString = printList(foodItems  ,proItems, comparedItems);
+  return printString;
 };
-function countPromotions(foodCount, allProItems) {
+function printList(foodItems , proItems, comparedItems) {
+  let print = "============= 订餐明细 ============="+"\n";
+  for(let item of foodItems){
+    print += item.name + " x " + item.count + " = " + item.sumprice + "元"+"\n";
+  }
+  print += "-----------------------------------"+"\n";
+  if(comparedItems.save > 0){
+    print += "使用优惠:" + "\n";
+    print += comparedItems.proType ;
+    if(comparedItems.proType === "指定菜品半价"){
+      print += "(";
+      for(i = 0; i < proItems.length - 1; i ++){
+        print += proItems[i].name + "，";
+      }
+      print += proItems[proItems.length - 1].name + ")";
+    }
+    print += "，省" + comparedItems.save+"元" + "\n";
+    print += "-----------------------------------"+"\n";
+  }
+  print += "总计：" + comparedItems.sumPrice + "元" + "\n";
+  print += "===================================";
+  return print;
+}
+function  comparePromotions(foodItems, proItems, allProItems) {
+  let sumPriceNone = 0, saveA = 0, saveB = 0;
+  foodItems.forEach(ele => {
+    sumPriceNone += ele.sumprice;
+    saveA = sumPriceNone > 30 ? 6: 0;
+    proItems.forEach( item => {
+      if(item.barcode === ele.id){
+        saveB += ele.sumprice / 2;
+      }
+    });
+  });
+  let save = (saveA > saveB) ? saveA : saveB;
+  let type = (save > 0) ? ((save === saveA)? allProItems[0].type : allProItems[1].type): "没有优惠";
+  return {save : save ,sumPrice : sumPriceNone - save , proType : type};
+}
+function getFood(foodCount , allItems) {
+  let result = allItems.filter( ele => {
+      return foodCount.find( item => {
+        return ele.id === item.barcode;
+      });
+  });
+  result.forEach( item => {
+    item.count = foodCount[result.indexOf(item)].count;
+    item.sumprice = item.price * item.count;
+  });
+  return result;
+}
+
+function countPromotions(foodItems, allProItems) {
   let result =  [];
-  for(let item of foodCount){
+  for(let item of foodItems){
     allProItems[1].items.filter( ele => {
-      if(ele === item.barcode){
-        result.push(item);
+      if(ele === item.id){
+
+        result.push({barcode : item.id , name: item.name , count : item.count});
       }
     });
   }
@@ -29,86 +78,10 @@ function foodCounts(inputs) {
     inputs.forEach( ele => {
     let arr = ele.split(" x ");
     if(arr.length > 1){
-      result.push({barcode : arr[0], count : arr[1]});
+      result.push({barcode : arr[0], count : parseInt(arr[1])});
     }else {
-      result.push({barcode:ele , count : 1});
+      result.push({barcode:ele , count : parseInt(1)});
     }
  });
-
   return result;
 }
-/*
-function printList(foodItems , proItems, comparedItesms) {
-  let print = "============= 订餐明细 ============="+"\n";
-  for(let item of foodItems){
-    print += item.name + " x " + item.count + " = " + item.count * item.price + "元"+"\n";
-  }
-  print += "-----------------------------------"+"\n";
-  if(comparedItesms.promotionType === "A"){
-    print += "使用优惠:" + "\n";
-    print += "满30减6元，省6元" + "\n";
-    print += "-----------------------------------"+"\n";
-  }else if(comparedItesms.promotionType === "B"){
-    print += "使用优惠:" + "\n";
-    print += "指定菜品半价(";
-    let length = proItems.length;
-    let proPrice = 0;
-    for(let i = 0; i < length - 1; i++){
-      print += proItems[i].name + "，";
-    }
-    for(let item of proItems){
-      proPrice += (item.price * item.count) / 2;
-    }
-    print += proItems[length - 1].name + ")，省" + proPrice+"元" + "\n";
-    print += "-----------------------------------"+"\n";
-  }
-  print += "总计：" + comparedItesms.price + "元" + "\n";
-  print += "===================================";
-  return print;
-}
-function comparePromotions(foodItems , proItems) {
-  let result = {};//{price:sumPrice , promotionType:A}
-  let sumPrice = 0;
-  let sumPriceA = 0;
-  let flag = "A";
-  for(let item of foodItems){
-    sumPriceA += item.count * item.price;
-  }
-  if(sumPriceA >= 30){
-    sumPriceA -= 6;
-  }else {
-    flag = "C";
-  }
-  let sumPriceB = 0;
-  for(let item of foodItems){
-    sumPriceB += item.count * item.price;
-  }
-  for(let item of proItems){
-    sumPriceB -= item.price / 2;
-  }
-  if(sumPriceA < sumPriceB){
-    sumPrice = sumPriceA;
-    flag = "A";
-  }else if(sumPriceA > sumPriceB){
-    sumPrice = sumPriceB;
-    flag = "B";
-  }else{
-    if(flag === "C"){
-      sumPrice = sumPriceA;
-    }
-  }
-  result = {price: sumPrice , promotionType: flag};
-  return result;
-}
-function countPromotions(foodItems , allProItems){
-  let result = [];
-  for(let food of foodItems){
-    for(let item of allProItems[1].items){
-      if (food.id === item){
-        result.push(food);
-      }
-    }
-  }
-  return result;
-}
-*/
